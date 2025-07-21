@@ -1,0 +1,688 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                             String                           @id @default(cuid())
+  name                           String
+  cpf                            String                           @unique
+  email                          String                           @unique
+  phone                          String                           @unique
+  password                       String
+  role                           RoleValue
+  state                          String
+  city                           String
+  address                        String
+  cnpj                           String?                          @unique
+  responsible                    String?
+  avatar                         String?
+  createdAt                      DateTime                         @default(now()) @map("created_at")
+  updatedAt                      DateTime                         @updatedAt @map("updated_at")
+  solecas                        BigInt                           @default(0)
+  employee                       Employee?
+  operator                       Operator?
+  serviceProvider                ServiceProvider?
+  ActivityAttempt                ActivityAttempt[]
+  UserModuleConclusion           UserModuleConclusion[]
+  UserMissionConclusion          UserMissionConclusion[]
+  UserDisciplineConclusion       UserDisciplineConclusion[]
+  UserAccessLog                  UserAccessLog[]
+  messagesSent                   Message[]                        @relation("MessagesSent")
+  messagesReceived               Message[]                        @relation("MessagesReceived")
+  CommunityMessage               CommunityMessage[]
+  UserStepConclusion             UserStepConclusion[]
+  UserDailyMissionConclusion     UserDailyMissionConclusion[]
+  UserDailyMissionStepConclusion UserDailyMissionStepConclusion[]
+
+  @@map("users")
+}
+
+model Operator {
+  id               String            @id @default(cuid())
+  userId           String            @unique @map("user_id")
+  user             User              @relation(fields: [userId], references: [id])
+  serviceProviders ServiceProvider[]
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  Discipline       Discipline[]      @relation(name: "DisciplineToOperator")
+  disciplineId     String?
+  PrizeOrder       PrizeOrder[]
+  profiles         Profile[]
+  Community        Community[]
+
+  @@map("operators")
+}
+
+model ServiceProvider {
+  id         String       @id @default(cuid())
+  userId     String       @unique @map("user_id")
+  operatorId String       @map("operator_id")
+  employees  Employee[]
+  operator   Operator     @relation(fields: [operatorId], references: [id])
+  user       User         @relation(fields: [userId], references: [id])
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+  PrizeOrder PrizeOrder[]
+
+  @@map("service_providers")
+}
+
+model Employee {
+  id                String          @id @default(cuid())
+  userId            String          @unique @map("user_id")
+  serviceProviderId String          @map("service_provider_id")
+  serviceProvider   ServiceProvider @relation(fields: [serviceProviderId], references: [id])
+  profileId         String          @map("profile_id")
+  communityId       String?
+
+  user           User                @relation(fields: [userId], references: [id])
+  PrizeOrder     PrizeOrder[]
+  Profile        Profile             @relation(fields: [profileId], references: [id])
+  TestConclusion TestConclusion[]
+  communities    EmployeeCommunity[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("employees")
+}
+
+model Profile {
+  id         String          @id @default(cuid())
+  name       String
+  accesses   ProfileAccess[]
+  employees  Employee[]
+  operatorId String
+
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  Operator     Operator       @relation(fields: [operatorId], references: [id])
+  Community    Community[]
+  DailyMission DailyMission[]
+
+  @@map("profiles")
+}
+
+model ProfileAccess {
+  id           String @id @default(cuid())
+  profileId    String @map("profile_id")
+  disciplineId String @map("discipline_id")
+  moduleId     String @map("module_id")
+  missionId    String @map("mission_id")
+  stepId       String @map("step_id")
+
+  profile    Profile     @relation(fields: [profileId], references: [id])
+  discipline Discipline? @relation(fields: [disciplineId], references: [id])
+  module     Module?     @relation(fields: [moduleId], references: [id])
+  mission    Mission?    @relation(fields: [missionId], references: [id])
+  step       Step?       @relation(fields: [stepId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([disciplineId])
+  @@index([moduleId])
+  @@index([missionId])
+  @@index([profileId])
+  @@map("profile_accesses")
+}
+
+model Discipline {
+  id         String   @id @default(cuid())
+  title      String
+  author     String
+  resume     String
+  color      String
+  coverImage String   @map("cover_image")
+  modules    Module[]
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  operators                Operator[]                 @relation(name: "DisciplineToOperator")
+  ProfileAccess            ProfileAccess[]
+  ActivityAttempt          ActivityAttempt[]
+  UserDisciplineConclusion UserDisciplineConclusion[]
+
+  @@map("disciplines")
+}
+
+model Module {
+  id        String    @id @default(cuid())
+  title     String
+  missions  Mission[]
+  index     Int
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  disciplineId         String                 @map("discipline_id")
+  Discipline           Discipline             @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
+  ProfileAccess        ProfileAccess[]
+  ActivityAttempt      ActivityAttempt[]
+  UserModuleConclusion UserModuleConclusion[]
+
+  @@map("modules")
+}
+
+model Mission {
+  id               String  @id @default(cuid())
+  title            String
+  initialVideo     String? @map("initial_video")
+  articleFile      String? @map("article_file")
+  index            Int
+  color            String
+  dialogActivityId String? @map("dialog_activity_id")
+  moduleId         String  @map("module_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  steps                 Step[]
+  finalTest             FinalTest?
+  module                Module                  @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  initialDialog         DialogActivity?         @relation(fields: [dialogActivityId], references: [id])
+  ProfileAccess         ProfileAccess[]
+  ActivityAttempt       ActivityAttempt[]
+  UserMissionConclusion UserMissionConclusion[]
+  DailyMission          DailyMission[]
+
+  @@map("missions")
+}
+
+model Step {
+  id        String   @id @default(cuid())
+  title     String
+  index     Int
+  missionId String   @map("mission_id")
+  mission   Mission  @relation(fields: [missionId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  VideoActivity                  VideoActivity[]
+  DialogActivity                 DialogActivity[]
+  MultipleResponseActivity       MultipleResponseActivity[]
+  ImageActivity                  ImageActivity[]
+  CompleteSentenceActivity       CompleteSentenceActivity[]
+  TrueOrFalseActivity            TrueOrFalseActivity[]
+  ProfileAccess                  ProfileAccess[]
+  ActivityAttempt                ActivityAttempt[]
+  UserStepConclusion             UserStepConclusion[]
+  UserDailyMissionStepConclusion UserDailyMissionStepConclusion[]
+
+  @@map("steps")
+}
+
+model FinalTest {
+  id            String   @id @default(cuid())
+  missionId     String   @unique @map("mission_id")
+  mission       Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  solecasAmount Int      @map("solecas_amount")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  VideoActivity            VideoActivity[]
+  DialogActivity           DialogActivity[]
+  MultipleResponseActivity MultipleResponseActivity[]
+  ImageActivity            ImageActivity[]
+  CompleteSentenceActivity CompleteSentenceActivity[]
+  TrueOrFalseActivity      TrueOrFalseActivity[]
+  TestConclusion           TestConclusion[]
+
+  @@map("final_tests")
+}
+
+model TestConclusion {
+  id            String   @id @default(cuid())
+  activitiesHit Int      @map("activities_hit")
+  employeeId    String   @map("employee_id")
+  finalTestId   String   @map("final_test_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  employee  Employee  @relation(fields: [employeeId], references: [id])
+  finalTest FinalTest @relation(fields: [finalTestId], references: [id])
+
+  @@unique([employeeId, finalTestId])
+  @@map("tests_conclusion")
+}
+
+model VideoActivity {
+  id            String   @id @default(cuid())
+  link          String
+  stepPosition  Int
+  solecasAmount Int      @map("solecas_amount")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  stepId        String   @map("step_id")
+  finalTestId   String?  @map("final_test_id")
+
+  Step      Step       @relation(fields: [stepId], references: [id])
+  FinalTest FinalTest? @relation(fields: [finalTestId], references: [id])
+
+  @@map("video_activities")
+}
+
+model DialogActivity {
+  id            String     @id @default(cuid())
+  solecasAmount Int        @map("solecas_amount")
+  stepPosition  Int
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+  stepId        String?    @map("step_id")
+  finalTestId   String?    @map("final_test_id")
+  Step          Step?      @relation(fields: [stepId], references: [id])
+  FinalTest     FinalTest? @relation(fields: [finalTestId], references: [id])
+  sentences     Sentence[]
+  Mission       Mission[]
+
+  @@map("dialog_activities")
+}
+
+model Sentence {
+  id               String                 @id @default(cuid())
+  person           SentencePersonIconEnum
+  index            Int
+  text             String
+  dialogActivityId String                 @map("dialog_activity_id")
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+  DialogActivity   DialogActivity         @relation(fields: [dialogActivityId], references: [id])
+
+  @@map("sentences")
+}
+
+model MultipleResponseActivity {
+  id            String   @id @default(cuid())
+  question      String
+  solecasAmount Int      @map("solecas_amount")
+  stepPosition  Int
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  stepId        String   @map("step_id")
+  finalTestId   String?  @map("final_test_id")
+
+  Step      Step       @relation(fields: [stepId], references: [id])
+  FinalTest FinalTest? @relation(fields: [finalTestId], references: [id])
+  responses Response[]
+
+  @@map("multiple_response_activities")
+}
+
+model Response {
+  id                         String   @id @default(cuid())
+  text                       String
+  isCorrect                  Boolean  @default(false) @map("is_correct")
+  multipleResponseActivityId String   @map("multiple_response_activity_id")
+  createdAt                  DateTime @default(now()) @map("created_at")
+  updatedAt                  DateTime @updatedAt @map("updated_at")
+
+  MultipleResponseActivity MultipleResponseActivity @relation(fields: [multipleResponseActivityId], references: [id])
+
+  @@map("responses")
+}
+
+model ImageActivity {
+  id            String   @id @default(cuid())
+  question      String
+  stepPosition  Int
+  solecasAmount Int      @map("solecas_amount")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  stepId        String   @map("step_id")
+  finalTestId   String?  @map("final_test_id")
+
+  Step      Step            @relation(fields: [stepId], references: [id])
+  FinalTest FinalTest?      @relation(fields: [finalTestId], references: [id])
+  responses ResponseImage[]
+
+  @@map("image_activities")
+}
+
+model ResponseImage {
+  id              String   @id @default(cuid())
+  imageFile       String   @map("image_file")
+  isCorrect       Boolean  @default(false) @map("is_correct")
+  imageActivityId String   @map("image_activity_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  ImageActivity ImageActivity @relation(fields: [imageActivityId], references: [id])
+
+  @@map("response_images")
+}
+
+model CompleteSentenceActivity {
+  id            String   @id @default(cuid())
+  question      String
+  stepPosition  Int
+  solecasAmount Int      @map("solecas_amount")
+  textParts     String[] @map("text_parts")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  stepId        String   @map("step_id")
+  finalTestId   String?  @map("final_test_id")
+
+  Step      Step       @relation(fields: [stepId], references: [id])
+  FinalTest FinalTest? @relation(fields: [finalTestId], references: [id])
+  gaps      Gap[]
+
+  @@map("complete_sentence_activities")
+}
+
+model Gap {
+  id                         String                   @id @default(cuid())
+  index                      Int
+  options                    String[]
+  correct                    String
+  completeSentenceActivityId String                   @map("activity_id")
+  activity                   CompleteSentenceActivity @relation(fields: [completeSentenceActivityId], references: [id], onDelete: Cascade)
+  createdAt                  DateTime                 @default(now()) @map("created_at")
+  updatedAt                  DateTime                 @updatedAt @map("updated_at")
+
+  @@map("gaps")
+}
+
+model TrueOrFalseActivity {
+  id            String   @id @default(cuid())
+  question      String
+  stepPosition  Int
+  solecasAmount Int      @map("solecas_amount")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  stepId        String   @map("step_id")
+  finalTestId   String?  @map("final_test_id")
+
+  Step      Step              @relation(fields: [stepId], references: [id])
+  FinalTest FinalTest?        @relation(fields: [finalTestId], references: [id])
+  items     TrueOrFalseItem[]
+
+  @@map("true_or_false_activities")
+}
+
+model TrueOrFalseItem {
+  id                    String  @id @default(cuid())
+  text                  String
+  isTrue                Boolean @default(false) @map("is_true")
+  trueOrFalseActivityId String  @map("true_or_false_activity_id")
+
+  TrueOrFalseActivity TrueOrFalseActivity @relation(fields: [trueOrFalseActivityId], references: [id])
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  @@map("true_or_false_items")
+}
+
+model Prize {
+  id           String       @id @default(cuid())
+  name         String
+  solecasValue Int          @map("solecas_value")
+  moneyValue   Float        @map("money_value")
+  description  String
+  image        String?
+  color        String
+  expiryDate   DateTime     @map("expiry_date")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+  PrizeOrder   PrizeOrder[]
+
+  @@map("prizes")
+}
+
+model PrizeOrder {
+  id                String @id @default(cuid())
+  prizeId           String @map("prize_id")
+  employeeId        String @map("employee_id")
+  serviceProviderId String @map("service_provider_id")
+  operatorId        String @map("operator_id")
+  solecasValue      Int    @map("solecas_value")
+  solecasRemaining  Int    @map("solecas_remaining")
+  moneyValue        Float  @map("money_value")
+
+  prize           Prize           @relation(fields: [prizeId], references: [id], onDelete: Cascade)
+  employee        Employee        @relation(fields: [employeeId], references: [id])
+  serviceProvider ServiceProvider @relation(fields: [serviceProviderId], references: [id])
+  operator        Operator        @relation(fields: [operatorId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("prize_orders")
+}
+
+model ActivityAttempt {
+  id             String       @id @default(cuid())
+  userId         String       @map("user_id")
+  activityType   ActivityType
+  activityId     String       @map("activity_id")
+  stepId         String       @map("step_id")
+  moduleId       String       @map("module_id")
+  missionId      String       @map("mission_id")
+  disciplineId   String       @map("discipline_id")
+  isCorrect      Boolean      @map("is_correct")
+  isDailyMission Boolean      @default(false) @map("is_daily_mission")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  user       User       @relation(fields: [userId], references: [id])
+  step       Step       @relation(fields: [stepId], references: [id])
+  module     Module     @relation(fields: [moduleId], references: [id])
+  mission    Mission    @relation(fields: [missionId], references: [id])
+  discipline Discipline @relation(fields: [disciplineId], references: [id])
+
+  @@unique([userId, activityId, isDailyMission])
+  @@index([moduleId, disciplineId])
+  @@index([userId])
+  @@index([isCorrect])
+  @@map("activity_attempts")
+}
+
+model UserAccessLog {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  accessedAt DateTime @default(now()) @map("accessed_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, accessedAt])
+  @@map("user_access_logs")
+}
+
+model UserModuleConclusion {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  moduleId   String    @map("module_id")
+  startedAt  DateTime  @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+
+  user   User   @relation(fields: [userId], references: [id])
+  module Module @relation(fields: [moduleId], references: [id])
+
+  @@unique([userId, moduleId])
+  @@index([userId, moduleId])
+  @@map("user_module_conclusions")
+}
+
+model UserMissionConclusion {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  missionId  String    @map("mission_id")
+  startedAt  DateTime  @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  mission Mission @relation(fields: [missionId], references: [id])
+
+  @@unique([userId, missionId])
+  @@index([userId, missionId])
+  @@map("user_mission_conclusions")
+}
+
+model UserDisciplineConclusion {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  disciplineId String    @map("discipline_id")
+  startedAt    DateTime  @default(now()) @map("started_at")
+  finishedAt   DateTime? @map("finished_at")
+
+  user       User       @relation(fields: [userId], references: [id])
+  discipline Discipline @relation(fields: [disciplineId], references: [id])
+
+  @@unique([userId, disciplineId])
+  @@index([userId])
+  @@index([disciplineId])
+  @@map("user_discipline_conclusions")
+}
+
+model UserStepConclusion {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  stepId     String    @map("step_id")
+  startedAt  DateTime  @default(now()) @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  step Step @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, stepId])
+  @@index([userId])
+  @@index([stepId])
+  @@map("user_step_conclusions")
+}
+
+model Message {
+  id         String    @id @default(cuid())
+  toUserId   String    @map("to_user_id")
+  fromUserId String    @map("from_user_id")
+  content    String
+  readAt     DateTime? @map("read_at")
+
+  toUser   User @relation("MessagesReceived", fields: [toUserId], references: [id])
+  fromUser User @relation("MessagesSent", fields: [fromUserId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("messages")
+}
+
+model Community {
+  id         String @id @default(cuid())
+  name       String
+  author     String
+  resume     String
+  cover      String
+  operatorId String @map("operator_id")
+  profileId  String @map("profile_id")
+
+  operator            Operator            @relation(fields: [operatorId], references: [id])
+  profile             Profile             @relation(fields: [profileId], references: [id])
+  employeeCommunities EmployeeCommunity[]
+
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+  CommunityMessage CommunityMessage[]
+
+  @@map("communities")
+}
+
+model EmployeeCommunity {
+  id          String @id @default(cuid())
+  employeeId  String @map("employee_id")
+  communityId String @map("community_id")
+
+  employee  Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([employeeId, communityId])
+  @@map("employees_communities")
+}
+
+model CommunityMessage {
+  id          String    @id @default(cuid())
+  fromUserId  String
+  communityId String
+  content     String
+  readAt      DateTime? @map("read_at")
+
+  fromUser  User      @relation(fields: [fromUserId], references: [id])
+  community Community @relation(fields: [communityId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("community_messages")
+}
+
+model DailyMission {
+  id            String   @id @default(cuid())
+  startAt       DateTime @map("start_at")
+  endAt         DateTime @map("end_at")
+  solecasAmount Int      @map("solecas_amount")
+  missionId     String   @map("mission_id")
+  profileId     String   @map("profile_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  mission                    Mission                      @relation(fields: [missionId], references: [id])
+  profile                    Profile                      @relation(fields: [profileId], references: [id])
+  UserDailyMissionConclusion UserDailyMissionConclusion[]
+
+  @@map("daily_missions")
+}
+
+model UserDailyMissionConclusion {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  dailyMissionId String   @map("daily_mission_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  dailyMission DailyMission @relation(fields: [dailyMissionId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([userId, dailyMissionId])
+  @@map("user_daily_missions")
+}
+
+model UserDailyMissionStepConclusion {
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+  stepId String @map("step_id")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  step Step @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, stepId])
+  @@map("user_daily_mission_step_conclusions")
+}
+
+enum ActivityType {
+  VIDEO
+  DIALOG
+  MULTIPLE_RESPONSE
+  IMAGE
+  COMPLETE_SENTENCE
+  TRUE_OR_FALSE
+}
+
+enum SentencePersonIconEnum {
+  SOLINHO
+  ANA_SECRETARIA
+  CLARA_SECRETARIA
+  PAULO_ENFERMEIRO
+  GIOVANA_ENFERMEIRA
+  JOAO
+  JOAQUIM
+  MARIA
+}
+
+enum RoleValue {
+  ADMIN
+  OPERATOR
+  SERVICE_PROVIDER
+  EMPLOYEE
+}

@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: solus-api:latest
+    container_name: solus-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.prod
+    depends_on:
+      - database
+    networks:
+      - app-prod-network
+
+  database:
+    image: postgres:13
+    container_name: solus-db-prod
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    volumes:
+      - solus-prod-postgres-volume:/var/lib/postgresql/data
+    networks:
+      - app-prod-network
+
+volumes:
+  solus-prod-postgres-volume:
+
+networks:
+  app-prod-network:
+    driver: bridge

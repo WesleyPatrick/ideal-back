@@ -1,0 +1,32 @@
+version: "3.8"
+services:
+  postgres:
+    image: postgres:13
+    container_name: solus-db
+    restart: always
+    ports:
+      - 5433:5432
+    env_file:
+      - .env
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7
+    container_name: solus-redis
+    restart: always
+    ports:
+      - 6379:6379
+    networks:
+      - app-network
+
+volumes:
+  postgres:
+    name: solus-postgres-volume
+
+networks:
+  app-network:
+
+

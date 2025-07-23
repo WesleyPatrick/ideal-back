@@ -77,8 +77,10 @@ export class UserController {
 
   @Get("connect-sse/:userId")
   connectToSSE(@Param("userId") userId: string, @Res() res: Response): void {
+    const decodedUserId = decodeURIComponent(userId);
+
     return this.sseConnectUseCase.execute({
-      userId,
+      userId: decodedUserId,
       res
     });
   }

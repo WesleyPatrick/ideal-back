@@ -9,13 +9,37 @@ async function bootstrap(): Promise<void> {
 
   app.useGlobalPipes(ValidationPipeConfig.config());
 
+  app.use((req, res, next) => {
+    if (req.url.includes("//")) {
+      req.url = req.url.replace(/\/+/g, "/");
+    }
+    next();
+  });
+
   SwaggerConfig.config(app);
 
   app.enableCors({
     origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"]
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Accept",
+      "Accept-Language",
+      "Cache-Control",
+      "Connection",
+      "Origin",
+      "Referer",
+      "Sec-Fetch-Dest",
+      "Sec-Fetch-Mode",
+      "Sec-Fetch-Site",
+      "Sec-GPC",
+      "User-Agent",
+      "sec-ch-ua",
+      "sec-ch-ua-mobile",
+      "sec-ch-ua-platform"
+    ]
   });
 
   await app.listen(process.env.PORT ?? 3000);
